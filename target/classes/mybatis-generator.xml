@@ -9,7 +9,7 @@
     <context id="DB2Tables" targetRuntime="MyBatis3">
         <!--数据库链接地址密码        -->
         <jdbcConnection driverClass="com.mysql.jdbc.Driver"
-                        connectionURL="jdbc:mysql://127.0.0.1:3306/miaosha"
+                        connectionURL="jdbc:mysql://127.0.0.1:3306/miaosha?useSSL=false"
                         userId="root"
                         password="root">
         </jdbcConnection>
@@ -61,8 +61,11 @@
 <!--        <table tableName="sequence_info" domainObjectName="SequenceDO"
                enableCountByExample="false" enableUpdateByExample="false" enableDeleteByExample="false" enableSelectByExample="false" selectByExampleQueryId="false">
         </table>-->
-        <table tableName="promo" domainObjectName="PromoDO"
+        <!--<table tableName="promo" domainObjectName="PromoDO"
                enableCountByExample="false" enableUpdateByExample="false" enableDeleteByExample="false" enableSelectByExample="false" selectByExampleQueryId="false">
-        </table>
+        </table>-->
+        <table tableName="stock_log" domainObjectName="StockLogDO"
+              enableCountByExample="false" enableUpdateByExample="false" enableDeleteByExample="false" enableSelectByExample="false" selectByExampleQueryId="false">
+       </table>
     </context>
 </generatorConfiguration>

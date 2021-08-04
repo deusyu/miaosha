@@ -10,19 +10,19 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.security.MD5Encoder;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import sun.misc.BASE64Encoder;
+//import sun.misc.BASE64Encoder;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Controller("user")
 @RequestMapping("/user")
@@ -35,25 +35,10 @@ public class UserController extends BaseController{
     @Autowired
     private HttpServletRequest httpServletRequest;
 
-    //用户登陆接口
-    @RequestMapping(value = "/login",method = {RequestMethod.POST},consumes = {CONTENT_TYPE_FORMED})
-    @ResponseBody
-    public CommonReturnType login(@RequestParam(name = "telphone")String telphone,
-                                  @RequestParam(name = "password")String password) throws BusinessException, NoSuchAlgorithmException {
-        //入参校验
-        if(StringUtils.isEmpty(telphone)
-        ||StringUtils.isEmpty(password)){
-            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
-        }
-        //用户登陆服务，用了校验用户登陆是否合法
-        UserModel userModel = userService.validateLogin(telphone, this.EncodeByMd5(password));
+    @Autowired
+    private RedisTemplate redisTemplate;
 
-        //将登陆凭证加入到用户登陆成功的session内
-        this.httpServletRequest.getSession().setAttribute("IS_LOGIN",true);
-        this.httpServletRequest.getSession().setAttribute("LOGIN_USER",userModel);
 
-        return CommonReturnType.create(null);
-    }
 
 
 
@@ -87,9 +72,20 @@ public class UserController extends BaseController{
     public  String EncodeByMd5(String str) throws NoSuchAlgorithmException {
         //确定计算方法
         MessageDigest md5 = MessageDigest.getInstance("MD5");
-        BASE64Encoder base64en = new BASE64Encoder();
+//        BASE64Encoder base64en = new BASE64Encoder();
+        //BASE64Encoder使用mvn clean package 报错
+
+//        Base64.Encoder base64en = Base64.getMimeEncoder();
+//        byte[] tmp = base64en.encode(md5.digest(str.getBytes(StandardCharsets.UTF_8)));
         //加密字符串
-        String newstr = base64en.encode(md5.digest(str.getBytes(StandardCharsets.UTF_8)));
+ //       String newstr = base64en.encode(md5.digest(str.getBytes(StandardCharsets.UTF_8)));
+//        String newstr = tmp.toString();
+
+
+        //修改一下方法使密码验证可以使用 mvn clean package 管理工具
+        Base64.Encoder base64en = Base64.getMimeEncoder();
+        String newstr = base64en.encodeToString(md5.digest(str.getBytes(StandardCharsets.UTF_8)));
+
         return newstr;
     }
 
@@ -108,10 +104,11 @@ public class UserController extends BaseController{
         //将OTP验证码同对应的用户手机号关联，使用httpsesession的方式和optcode绑定
         httpServletRequest.getSession().setAttribute(telphone,optCode);
 
-        System.out.println("telphone = "+telphone+" & otpCode = "+optCode);
+
 
 
         //将OTP验证码通过短信通道发送给用户,省略
+        System.out.println("telphone = "+telphone+" & otpCode = "+optCode);
 
         return CommonReturnType.create(null);
     }
@@ -145,7 +142,37 @@ public class UserController extends BaseController{
         BeanUtils.copyProperties(userModel,userVO);
         return userVO;
     }
+    //用户登陆接口
+    @RequestMapping(value = "/login",method = {RequestMethod.POST},consumes = {CONTENT_TYPE_FORMED})
+    @ResponseBody
+    public CommonReturnType login(@RequestParam(name = "telphone")String telphone,
+                                  @RequestParam(name = "password")String password) throws BusinessException, NoSuchAlgorithmException {
+        //入参校验
+        if(StringUtils.isEmpty(telphone)
+                ||StringUtils.isEmpty(password)){
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        }
+        //用户登陆服务，用了校验用户登陆是否合法
+        UserModel userModel = userService.validateLogin(telphone, this.EncodeByMd5(password));
 
+        //修改成若用户登陆验证成功后将对应的登陆信息和登陆凭证一起存入redis中
+
+        //生成登陆凭证token，UUID
+        String uuidToken = UUID.randomUUID().toString();
+        uuidToken = uuidToken.replace("-","");
+        //建立token和用户登陆态之间的联系
+
+        redisTemplate.opsForValue().set(uuidToken,userModel);
+
+        redisTemplate.expire(uuidToken,1, TimeUnit.HOURS);
+
+        //将登陆凭证加入到用户登陆成功的session内
+/*        this.httpServletRequest.getSession().setAttribute("IS_LOGIN",true);
+        this.httpServletRequest.getSession().setAttribute("LOGIN_USER",userModel);*/
+
+        //下发了token
+        return CommonReturnType.create(uuidToken);
+    }
 
 
 }

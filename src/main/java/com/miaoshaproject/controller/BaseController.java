@@ -16,7 +16,7 @@ public class BaseController {
 
     public static final String CONTENT_TYPE_FORMED = "application/x-www-form-urlencoded";
 
-    //定义exceptionhandler解决未被controller层吸收的exception
+/*    //定义exceptionhandler解决未被controller层吸收的exception
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
@@ -36,5 +36,5 @@ public class BaseController {
 
         return CommonReturnType.create(responseData,"fail");
 
-    }
+    }*/
 }
